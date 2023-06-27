@@ -3,6 +3,10 @@ import "./tasks/account";
 import "./tasks/verify";
 import "./tasks/balances";
 import "./tasks/faucet";
+import "./tasks/deploy";
+import "./tasks/withdraw";
+import "./tasks/mint";
+import "./tasks/transfer";
 
 import { getHardhatConfigNetworks } from "@zetachain/addresses-tools/dist/networks";
 import * as dotenv from "dotenv";
@@ -16,7 +20,12 @@ const config: HardhatUserConfig = {
   networks: {
     ...getHardhatConfigNetworks(PRIVATE_KEYS),
   },
-  solidity: "0.8.18",
+  solidity: {
+    compilers: [
+      { version: "0.6.6" /** For uniswap v2 */ },
+      { version: "0.8.7" },
+    ],
+  },
 };
 
 export default config;
