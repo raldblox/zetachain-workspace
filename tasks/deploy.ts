@@ -1,7 +1,8 @@
-import { task } from "hardhat/config";
-import { HardhatRuntimeEnvironment } from "hardhat/types";
+/* eslint-disable prettier/prettier */
 import { getAddress, getChainId } from "@zetachain/addresses";
 import { ethers } from "ethers";
+import { task } from "hardhat/config";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
 
 const contractName = "CrossChainNamespace";
 
@@ -62,11 +63,20 @@ const deployContract = async (
 
   const { abi, bytecode } = await hre.artifacts.readArtifact(contractName);
   const factory = new ethers.ContractFactory(abi, bytecode, wallet);
+  console.log(
+    "Arguments:",
+    connectorAddress,
+    zetaTokenAddress,
+    zetaTokenConsumerV2 || zetaTokenConsumerV3,
+    true,
+    networkName
+  );
   const contract = await factory.deploy(
     connectorAddress,
     zetaTokenAddress,
     zetaTokenConsumerV2 || zetaTokenConsumerV3,
-    true
+    true,
+    networkName
   );
 
   await contract.deployed();

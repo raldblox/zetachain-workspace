@@ -9,6 +9,7 @@
 
 pragma solidity >=0.8.2 <0.9.0;
 
+import "./NamespaceRegistrar.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable2Step.sol";
@@ -26,7 +27,7 @@ interface CrossChainNamespaceErrors {
 }
 
 contract CrossChainNamespace is
-    ERC721("CrossChain Namespace Token", "CCNT"),
+    ERC721("CrossChain Namespace", "CNS"),
     Ownable2Step,
     ZetaInteractor,
     ZetaReceiver,
@@ -34,6 +35,10 @@ contract CrossChainNamespace is
 {
     using Counters for Counters.Counter;
     using Strings for uint256;
+    address private admin;
+    string public chain;
+
+    NamespaceRegistrar public registrar;
 
     bytes32 public constant CROSS_CHAIN_TRANSFER_MESSAGE =
         keccak256("CROSS_CHAIN_TRANSFER");
@@ -42,13 +47,12 @@ contract CrossChainNamespace is
 
     string public baseURI;
 
-    Counters.Counter public totalSupply;
+    Counters.Counter public tokenIds;
 
     ZetaTokenConsumer private immutable _zetaConsumer;
 
     string private contractUri =
         '{"name":"namespace","description":"Connect, create, and control with Namespace."}';
-    address private admin;
 
     event NewToken(
         uint256 indexed tokenId,
@@ -61,8 +65,10 @@ contract CrossChainNamespace is
         _;
     }
 
+    mapping(string => uint256) public nameIds;
     mapping(uint256 => bool) isNames;
     mapping(uint256 => string) public names;
+    mapping(uint256 => string) public spaces;
     mapping(uint256 => string) colors;
     mapping(uint256 => string) bgs;
 
@@ -70,17 +76,21 @@ contract CrossChainNamespace is
         address connectorAddress,
         address zetaTokenAddress,
         address zetaConsumerAddress,
-        bool useEven
+        bool useEven,
+        string memory chainName
     ) ZetaInteractor(connectorAddress) {
         _zetaToken = IERC20(zetaTokenAddress);
         _zetaConsumer = ZetaTokenConsumer(zetaConsumerAddress);
+
+        registrar = new NamespaceRegistrar(msg.sender);
+        chain = chainName;
 
         /**
          * @dev A simple way to prevent collisions between cross-chain token ids
          * As you can see below, the mint function should increase the counter by two
          */
-        totalSupply.increment();
-        if (useEven) totalSupply.increment();
+        tokenIds.increment();
+        if (useEven) tokenIds.increment();
     }
 
     function setContractUri(string memory _new) external onlyAdmin {
@@ -108,15 +118,26 @@ contract CrossChainNamespace is
         address _owner,
         bool isName
     ) public returns (uint256) {
-        totalSupply.increment();
-        totalSupply.increment();
+        uint256 newNamespaceId = tokenIds.current();
 
-        _safeMint(_owner, totalSupply.current());
+        /**
+         * @dev Always increment by two to keep ids even/odd (depending on the chain)
+         * Check the constructor for further reference
+         */
+        tokenIds.increment();
+        tokenIds.increment();
 
-        isNames[totalSupply.current()] = isName;
-        names[totalSupply.current()] = _name;
-        emit NewToken(totalSupply.current(), _owner, isName ? "Name" : "Space");
-        return totalSupply.current();
+        _safeMint(_owner, newNamespaceId);
+
+        isNames[newNamespaceId] = isName;
+        if (isName) {
+            names[newNamespaceId] = _name;
+        } else {
+            spaces[newNamespaceId] = _name;
+        }
+
+        emit NewToken(newNamespaceId, _owner, isName ? "Name" : "Space");
+        return tokenIds.current();
     }
 
     function contractURI() external view returns (string memory) {
@@ -167,17 +188,31 @@ contract CrossChainNamespace is
             );
     }
 
-    function generateVisualizer(
-        uint256 tokenId
-    ) internal view returns (string memory) {
-        return "hello";
-    }
-
     function generateImage(
         uint256 tokenId
     ) public view returns (string memory) {
-        bool isName = isNames[tokenId];
-        return "hello";
+        string memory encodedBytes = Base64.encode(
+            bytes(
+                abi.encodePacked(
+                    '<svg viewBox="0 0 500 500" xmlns="http://www.w3.org/2000/svg">',
+                    "<style>svg {background-color:",
+                    "#94ff2b",
+                    ";} text {fill:",
+                    "#131313",
+                    ";font-weight: bold; font-family: sans-serif;}</style>",
+                    '<text x="480" y="50" font-size="30" text-anchor="end" font-weight="bold">(',
+                    Strings.toString(tokenId),
+                    ')</text><text x="20" y="50" font-size="30" font-weight="bold">',
+                    chain,
+                    "</text></svg>"
+                )
+            )
+        );
+
+        return
+            string(
+                abi.encodePacked("data:image/svg+xml;base64,", encodedBytes)
+            );
     }
 
     function recover() external onlyOwner {
@@ -193,8 +228,8 @@ contract CrossChainNamespace is
         _safeMint(to, tokenId);
     }
 
-    function _burnWarrior(uint256 burnedWarriorId) internal {
-        _burn(burnedWarriorId);
+    function _burnNamespace(uint256 burnedNamespaceId) internal {
+        _burn(burnedNamespaceId);
     }
 
     /**
@@ -204,7 +239,9 @@ contract CrossChainNamespace is
     function crossChainTransfer(
         uint256 crossChainId,
         address to,
-        uint256 tokenId
+        uint256 tokenId,
+        string memory name,
+        bool isName
     ) external payable {
         if (!_isValidChainId(crossChainId)) revert InvalidDestinationChainId();
         if (!_isApprovedOrOwner(_msgSender(), tokenId))
@@ -216,7 +253,7 @@ contract CrossChainNamespace is
         }(address(this), crossChainGas);
         _zetaToken.approve(address(connector), zetaValueAndGas);
 
-        _burnWarrior(tokenId);
+        _burnNamespace(tokenId);
 
         connector.send(
             ZetaInterfaces.SendInput({
@@ -227,7 +264,9 @@ contract CrossChainNamespace is
                     CROSS_CHAIN_TRANSFER_MESSAGE,
                     tokenId,
                     msg.sender,
-                    to
+                    to,
+                    name,
+                    isName
                 ),
                 zetaValueAndGas: zetaValueAndGas,
                 zetaParams: abi.encode("")
@@ -245,29 +284,53 @@ contract CrossChainNamespace is
             /**
              * @dev this extra comma corresponds to address from
              */
-            address to
+            address to,
+            string memory name,
+            bool isName
         ) = abi.decode(
                 zetaMessage.message,
-                (bytes32, uint256, address, address)
+                (bytes32, uint256, address, address, string, bool)
             );
 
         if (messageType != CROSS_CHAIN_TRANSFER_MESSAGE)
             revert InvalidMessageType();
 
         _mintId(to, tokenId);
+
+        isNames[tokenId] = isName;
+
+        if (isName) {
+            names[tokenId] = name;
+        } else {
+            spaces[tokenId] = name;
+        }
     }
 
     function onZetaRevert(
         ZetaInterfaces.ZetaRevert calldata zetaRevert
     ) external override isValidRevertCall(zetaRevert) {
-        (bytes32 messageType, uint256 tokenId, address from) = abi.decode(
-            zetaRevert.message,
-            (bytes32, uint256, address)
-        );
+        (
+            bytes32 messageType,
+            uint256 tokenId,
+            address from,
+            string memory name,
+            bool isName
+        ) = abi.decode(
+                zetaRevert.message,
+                (bytes32, uint256, address, string, bool)
+            );
 
         if (messageType != CROSS_CHAIN_TRANSFER_MESSAGE)
             revert InvalidMessageType();
 
         _mintId(from, tokenId);
+
+        isNames[tokenId] = isName;
+
+        if (isName) {
+            names[tokenId] = name;
+        } else {
+            spaces[tokenId] = name;
+        }
     }
 }
