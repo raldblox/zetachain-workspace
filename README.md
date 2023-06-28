@@ -1,7 +1,6 @@
-# Template for a ZetaChain Hardhat Project
+# ZetaChain Hardhat Projects
 
-This is a simple Hardhat template that provides a starting point for developing
-smart contract applications on the ZetaChain blockchain.
+This is smart contract template for ZetaChain is generated from [zetachain/template](https://github.com/zeta-chain/template).
 
 ## Prerequisites
 
@@ -98,3 +97,4 @@ After the confirmation the contract will be verified.
 
 Deploy the contract to two networks: `npx hardhat deploy --networks bsc-testnet,goerli`
 Mint Task: `npx hardhat mint --network goerli --contract <address>`
+Cross-Chain Transfer Task: `npx hardhat transfer --network goerli --contract <contractaddress> --address <walletaddress> --destination 97 --token 2 --amount 0.4`
