@@ -3,7 +3,7 @@ import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { getAddress, getChainId } from "@zetachain/addresses";
 import { ethers } from "ethers";
 
-const contractName = "CrossChainWarriors";
+const contractName = "CrossChainNamespace";
 
 const main = async (args: any, hre: HardhatRuntimeEnvironment) => {
   const networks = args.networks.split(",");
