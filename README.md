@@ -94,8 +94,7 @@ Select the contract to verify:
 
 After the confirmation the contract will be verified.
 
-## Next Steps
+## OmniChain NFT hardhat commands
 
-To learn more about building decentralized apps on ZetaChain, follow the
-tutorials available in
-[the documentation](https://www.zetachain.com/docs/developers/overview/).
+Deploy the contract to two networks: `npx hardhat deploy --networks bsc-testnet,goerli`
+Mint Task: `npx hardhat mint --network goerli --contract <address>`
