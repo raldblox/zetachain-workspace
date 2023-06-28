@@ -18,4 +18,4 @@
 - 🌍 **ZetaChain Cross-chain Contracts/Transactions**
   - 🌠 [Broadcasted to Goerli (Minted nsNFT ID: 2)](https://explorer.zetachain.com/)
   - 📝 ["crossChainTransfer" tx broadcasted to Goerli](https://explorer.zetachain.com/)
-  - 📝 [Explorer](https://explorer.zetachain.com/address/0xf93bafdA60eb8d700c6C8368eD939af91140baB6)
+  - 📝 [Explorer](https://explorer.zetachain.com/address/)
